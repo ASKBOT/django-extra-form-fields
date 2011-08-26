@@ -1,0 +1,10 @@
+include ez_setup.py
+include LICENSE
+include AUTHORS
+include COPYING
+include README.rst
+recursive-include django_extra_form_fields *
+recursive-exclude django_extra_form_fields *.pyc
+recursive-exclude .git
+prune dist
+prune build
