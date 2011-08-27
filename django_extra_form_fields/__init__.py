@@ -1,20 +1,29 @@
-from django import forms
+"""module ``django_extra_form_fields`` 
+provides several additional form fields:
+* StrippedNonEmptyCharField
+* NextUrlField (and an accompanying method ``get_next_url``)
+* UserNameField
+* UserEmailField
+"""
+import logging
 import re
+import urllib
+from django import forms
 from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
 #todo - use unified settings abject
-from django.conf import settings as django_settings
-from askbot.conf import settings as askbot_settings
+from django_extra_form_fields.conf import settings
 from django.http import str_to_unicode
 from django.contrib.auth.models import User
-from askbot import const
-import logging
-import urllib
+
+__version__ = '0.0.1'
 
 class StrippedNonEmptyCharField(forms.CharField):
     """``CharField`` with a requirement of
     being a non-empty string"""
-    def clean(self,value):
+    def clean(self, value):
+        """Clean function strips the value
+        of empty characters"""
         value = value.strip()
         if self.required and value == '':
             raise forms.ValidationError(_('this field is required'))
@@ -36,7 +45,7 @@ class NextUrlField(forms.CharField):
         kwargs.setdefault('required', False)
         self.default_next_url = kwargs.pop(
             'default_next_url',
-            django_settings.LOGIN_REDIRECT_URL
+            settings.LOGIN_REDIRECT_URL
         )
         super(NextUrlField, self).__init__(**kwargs)
 
@@ -57,19 +66,24 @@ def get_next_url(request, field_name = 'next'):
 
 
 class UserNameField(StrippedNonEmptyCharField):
-    RESERVED_USER_NAMES = (
-        u'fuck', u'shit', u'ass', u'sex', u'add',
-        u'edit', u'save', u'delete', u'manage',
-        u'update', 'remove', 'new'
-    )
+    """Checks existence of user name in the database.
+    If name already exist, value of the field will not
+    validate.
+
+    Allows to validate user name against
+    a custom regex, which defaults to the django's 
+    internal username regex given by setting -
+    ``USERNAME_REGEX_STRING``
+
+    Allows to specify list of names that cannot
+    be used via setting ``RESERVED_USER_NAMES``
+    """
     def __init__(self, **kwargs):
         """optional parameters:
         * ``skip_clean`` - boolean, if true - do not clean user name, just return
-        * ``user_instance`` - instance of ``class::auth.models.User`` - if given,
-          username will work if it is the same as that of user_instance
+        * ``widget_attrs`` - attributes to pass onto the widget
         """
         self.skip_clean = kwargs.pop('skip_clean', False)
-        self.user_instance = kwargs.pop('user_instance', None)
         kwargs.setdefault('label', _('choose a user name'))
         kwargs.setdefault('max_length', 30)
 
@@ -79,46 +93,58 @@ class UserNameField(StrippedNonEmptyCharField):
         kwargs.setdefault('widget', default_widget)
 
         #error messages
-        self.error_messages={
+        self.error_messages = {
             'required':_('user name is required'),
             'taken':_('sorry, this name is taken, please choose another'),
-            'forbidden':_('sorry, this name is not allowed, please choose another'),
+            'forbidden':_(
+                'sorry, this name is not allowed, '
+                'please choose another'
+            ),
             'missing':_('sorry, there is no user with this name'),
-            'multiple-taken':_('sorry, we have a serious error - user name is taken by several users'),
-            'invalid':_('user name can only consist of letters, empty space and underscore'),
+            'multiple-taken':_(
+                'sorry, we have a serious error '
+                '- user name is taken by several users'
+            ),
+            'invalid':_(
+                'user name can only consist of letters, '
+                'empty space and underscore'
+            ),
         }
         extra_messages = kwargs.pop('error_messages', {})
         self.error_messages.update(extra_messages)
 
-        super(UserNameField,self).__init__(**kwargs)
+        super(UserNameField, self).__init__(**kwargs)
 
     def clean(self, username):
         """ validate username """
         if self.skip_clean == True:
             logging.debug('username accepted with no validation')
             return username
-        if self.user_instance is None:
-            pass
-        elif isinstance(self.user_instance, User):
-            if username == self.user_instance.username:
-                logging.debug('username valid')
-                return username
-        else:
-            raise TypeError('user instance must be of type User')
 
         try:
             username = super(UserNameField, self).clean(username)
         except forms.ValidationError:
             raise forms.ValidationError(self.error_messages['required'])
 
-        username_regex = re.compile(const.USERNAME_REGEX_STRING, re.UNICODE)
+        username_regex = re.compile(settings.USERNAME_REGEX_STRING, re.UNICODE)
         if self.required and not username_regex.search(username):
             raise forms.ValidationError(self.error_messages['invalid'])
-        if username in self.RESERVED_USER_NAMES:
-            raise forms.ValidationError(self.error_messages['forbidden'])
+        if hasattr(settings, 'RESERVED_USER_NAMES'):
+            if username in settings.RESERVED_USER_NAMES:
+                raise forms.ValidationError(self.error_messages['forbidden'])
+
+        #Check whether user name is available.
+        #there is a race condition
+        #here, where it is possibility for an uncaught database
+        #error, but it will be very rare, so we ignore it
         try:
-            User.objects.get(username = username)
-            raise forms.ValidationError(self.error_messages['taken'])
+            if username == self.initial:
+                #skip uniqueness testing here because user is
+                #not changing his name
+                return username
+            else:
+                User.objects.get(username = username)
+                raise forms.ValidationError(self.error_messages['taken'])
         except User.DoesNotExist:
             return username
         except User.MultipleObjectsReturned:
@@ -126,6 +152,10 @@ class UserNameField(StrippedNonEmptyCharField):
             raise forms.ValidationError(self.error_messages['multiple-taken'])
 
 class UserEmailField(forms.EmailField):
+    """Same as :class:`django.forms.EmailField`, but
+    allows checking for the email unqueness - if setting
+    ``EMAIL_UNIQUE`` == True
+    """
     def __init__(self, **kwargs):
         """optional keyword arguments:
         * widget - form widget
@@ -136,7 +166,10 @@ class UserEmailField(forms.EmailField):
         error_messages = {
             'required':_('email address is required'),
             'invalid':_('please enter a valid email address'),
-            'taken':_('this email is already used by someone else, please choose another'),
+            'taken':_(
+                'this email is already used by someone else, '
+                'please choose another'
+            ),
         }
         error_messages.update(kwargs.get('error_messages', {}))
         kwargs['error_messages'] = error_messages
@@ -144,16 +177,16 @@ class UserEmailField(forms.EmailField):
         widget_attrs = kwargs.pop('widget_attrs', {})
         kwargs.setdefault('widget', forms.TextInput(attrs = widget_attrs))
 
-        super(UserEmailField,self).__init__(**kwargs)
+        super(UserEmailField, self).__init__(**kwargs)
 
     def clean(self, email):
         """ validate if email exist in database
         from legacy register
         return: raise error if it exist """
         email = super(UserEmailField, self).clean(email.strip())
-        if askbot_settings.EMAIL_UNIQUE == True:
+        if settings.EMAIL_UNIQUE == True:
             try:
-                user = User.objects.get(email = email)
+                User.objects.get(email = email)
                 logging.debug('email taken')
                 raise forms.ValidationError(self.error_messages['taken'])
             except User.DoesNotExist:
