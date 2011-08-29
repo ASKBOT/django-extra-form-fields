@@ -106,8 +106,8 @@ class UserNameField(StrippedNonEmptyCharField):
                 '- user name is taken by several users'
             ),
             'invalid':_(
-                'user name can only consist of letters, '
-                'empty space and underscore'
+                'user name can only consist of letters, numbers, '
+                'and @/./+/-/_ characters.'
             ),
         }
         extra_messages = kwargs.pop('error_messages', {})
