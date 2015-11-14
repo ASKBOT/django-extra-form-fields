@@ -1,0 +1,24 @@
+Metadata-Version: 1.1
+Name: django-extra-form-fields
+Version: 0.0.1
+Summary: Additional form fields for Django applications
+Home-page: http://askbot.org
+Author: Evgeny.Fadeev
+Author-email: evgeny.fadeev@gmail.com
+License: BSD
+Description: Additional form fields to use in Django applications:
+        
+        * NextUrlField - add to forms that need to store url of next page
+        * get_next_url - utility function to extract next url from the request object
+        * UserNameField - field to enter user name - allows unique username site-wide
+        * UserEmailField - allows unique email address site-wide if ``EMAIL_UNIQUE`` setting is ``True``
+        
+Keywords: django,module
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Framework :: Django

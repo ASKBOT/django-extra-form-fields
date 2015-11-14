@@ -5,6 +5,7 @@ provides several additional form fields:
 * UserNameField
 * UserEmailField
 """
+from __future__ import absolute_import
 import logging
 import re
 import urllib

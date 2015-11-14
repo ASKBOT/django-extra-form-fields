@@ -1,0 +1,15 @@
+AUTHORS
+COPYING
+LICENSE
+MANIFEST.in
+ez_setup.py
+setup.py
+django_extra_form_fields/__init__.py
+django_extra_form_fields/conf.py
+django_extra_form_fields/default_settings.py
+django_extra_form_fields/fields.py
+django_extra_form_fields.egg-info/PKG-INFO
+django_extra_form_fields.egg-info/SOURCES.txt
+django_extra_form_fields.egg-info/dependency_links.txt
+django_extra_form_fields.egg-info/requires.txt
+django_extra_form_fields.egg-info/top_level.txt
