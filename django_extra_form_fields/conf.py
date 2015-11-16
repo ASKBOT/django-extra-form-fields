@@ -8,6 +8,7 @@ django settings or the extra settings module:
 * USERNAME_REGEX_STRING - regex for acceptable user name
 * EMAIL_UNIQUE - boolean - require unique email address sitewide
 """
+from __future__ import absolute_import
 from django.conf import settings as django_settings
 from multi_registry import MultiRegistry
 
